@@ -15,8 +15,6 @@
 #include <assert.h>
 #include <vector>
 
-std::vector<GLuint> uniforms;
-
 void bindAttributes(GLuint& shaderProgram);
 GLuint compileShaders(GLuint& vertexShader, GLuint& fragmentShader);
 void setupElementBuffer(GLuint& ebo);
@@ -24,7 +22,7 @@ void setupVertices(GLuint& vbo);
 
 void bindAttributes(GLuint& shaderProgram) {
     GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
-    glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 7 * sizeof(GLfloat), 0);
+    glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 7 * sizeof(float), 0);
     glEnableVertexAttribArray(posAttrib);
     
     GLint colAttrib = glGetAttribLocation(shaderProgram, "color");
@@ -33,7 +31,7 @@ void bindAttributes(GLuint& shaderProgram) {
     
     GLint texAttrib = glGetAttribLocation(shaderProgram, "texcoord");
     glEnableVertexAttribArray(texAttrib);
-    glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void*)(5*sizeof(float)));
+    glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void*)(5 * sizeof(float)));
 }
 
 GLuint compileShaders(GLuint& vertexShader, GLuint& fragmentShader) {
@@ -55,7 +53,7 @@ GLuint compileShaders(GLuint& vertexShader, GLuint& fragmentShader) {
     out vec4 outColor;\n\
     uniform sampler2D tex;\n\
     void main() {\n\
-      outColor = texture(tex, Texcoord);\n\
+      outColor = texture(tex, Texcoord) * vec4(Color, 1.0);\n\
     }";
     
     vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -107,6 +105,7 @@ void setupElementBuffer(GLuint& ebo) {
 
 void setupVertices(GLuint& vbo) {
     GLfloat vertices[] = {
+        //  Position   Color             Texcoords
         -0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, // Top-left
         0.5f,  0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, // Top-right
         0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, // Bottom-right
@@ -117,8 +116,6 @@ void setupVertices(GLuint& vbo) {
 }
 
 int main(int argc, const char * argv[]) {
-    
-    uniforms = std::vector<GLuint>();
     SDL_Init(SDL_INIT_VIDEO);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
@@ -155,7 +152,7 @@ int main(int argc, const char * argv[]) {
     bindAttributes(shaderProgram);
     
     GLuint tex;
-    glGenTextures(GL_TEXTURE_2D, &tex);
+    glGenTextures(1, &tex);
     
     SDL_Surface *image = IMG_Load("pic.png");
     
@@ -167,7 +164,8 @@ int main(int argc, const char * argv[]) {
     int mode;
     if (image->format->BytesPerPixel == 3) { // RGB 24bit
         mode = GL_RGB;
-    } else if (image->format->BytesPerPixel == 4) { // RGBA 32bit
+    }
+    else if (image->format->BytesPerPixel == 4) { // RGBA 32bit
         mode = GL_RGBA;
     }
     
@@ -175,6 +173,8 @@ int main(int argc, const char * argv[]) {
     glTexImage2D(GL_TEXTURE_2D, 0, mode, image->w, image->h, 0, GL_RGB, GL_UNSIGNED_BYTE, image->pixels);
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     
     while (true) {
         if (SDL_PollEvent(&windowEvent)) {
