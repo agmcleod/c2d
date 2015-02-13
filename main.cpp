@@ -10,33 +10,55 @@
 #define GLEW_STATIC
 #include <GL/glew.h>
 #include <OpenGL/OpenGL.h>
+#include <SDL2_image/SDL_image.h>
 #include <iostream>
 #include <assert.h>
+#include <vector>
+
+std::vector<GLuint> uniforms;
 
 void bindAttributes(GLuint& shaderProgram);
-GLuint compileShaders();
-void setupGL(GLuint& vbo);
+GLuint compileShaders(GLuint& vertexShader, GLuint& fragmentShader);
+void setupElementBuffer(GLuint& ebo);
+void setupVertices(GLuint& vbo);
 
 void bindAttributes(GLuint& shaderProgram) {
     GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
-    glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 0, 0);
+    glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 7 * sizeof(GLfloat), 0);
     glEnableVertexAttribArray(posAttrib);
+    
+    GLint colAttrib = glGetAttribLocation(shaderProgram, "color");
+    glEnableVertexAttribArray(colAttrib);
+    glVertexAttribPointer(colAttrib, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void*)(2 * sizeof(float)));
+    
+    GLint texAttrib = glGetAttribLocation(shaderProgram, "texcoord");
+    glEnableVertexAttribArray(texAttrib);
+    glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void*)(5*sizeof(float)));
 }
 
-GLuint compileShaders() {
+GLuint compileShaders(GLuint& vertexShader, GLuint& fragmentShader) {
     const GLchar* vertex = "#version 150\n\
     in vec2 position;\n\
+    in vec3 color;\n\
+    in vec2 texcoord;\n\
+    out vec3 Color;\n\
+    out vec2 Texcoord;\n\
     void main() {\n\
-      gl_Position = vec4(position, 0.0, 1.0);\n\
+        Color = color;\n\
+        Texcoord = texcoord;\n\
+        gl_Position = vec4(position, 0.0, 1.0);\n\
     }";
     
     const GLchar* fragment = "#version 150\n\
+    in vec3 Color;\n\
+    in vec2 Texcoord;\n\
     out vec4 outColor;\n\
+    uniform sampler2D tex;\n\
     void main() {\n\
-      outColor = vec4(1.0, 1.0, 1.0, 1.0);\n\
+      outColor = texture(tex, Texcoord);\n\
     }";
     
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    vertexShader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertexShader, 1, &vertex, NULL);
     glCompileShader(vertexShader);
     
@@ -50,12 +72,15 @@ GLuint compileShaders() {
         assert(false);
     }
     
-    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fragmentShader, 1, &fragment, NULL);
     glCompileShader(fragmentShader);
     glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &status);
     
     if (status != GL_TRUE) {
+        char buffer[512];
+        glGetShaderInfoLog(vertexShader, 512, NULL, buffer);
+        std::cout << buffer << std::endl;
         assert(false);
     }
     
@@ -70,18 +95,30 @@ GLuint compileShaders() {
     return shaderProgram;
 }
 
+void setupElementBuffer(GLuint& ebo) {
+    GLuint elements[] = {
+        0, 1, 2,
+        2, 3, 0
+    };
+    
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(elements), elements, GL_STATIC_DRAW);
+}
 
-void setupGL(GLuint& vbo) {
-    float vertices[] = {
-        0.0f, 0.5f,
-        0.5f, -0.5f,
-        -0.5f, -0.5f
+void setupVertices(GLuint& vbo) {
+    GLfloat vertices[] = {
+        -0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, // Top-left
+        0.5f,  0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, // Top-right
+        0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, // Bottom-right
+        -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f  // Bottom-left
     };
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 }
 
 int main(int argc, const char * argv[]) {
+    
+    uniforms = std::vector<GLuint>();
     SDL_Init(SDL_INIT_VIDEO);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
@@ -95,6 +132,9 @@ int main(int argc, const char * argv[]) {
     
     SDL_Event windowEvent;
     
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    
     GLuint vao;
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
@@ -102,9 +142,39 @@ int main(int argc, const char * argv[]) {
     GLuint vbo;
     glGenBuffers(1, &vbo);
     
-    setupGL(vbo);
-    GLuint shaderProgram = compileShaders();
+    GLuint ebo;
+    glGenBuffers(1, &ebo);
+    
+    setupVertices(vbo);
+    setupElementBuffer(ebo);
+    
+    GLuint fragmentShader;
+    GLuint vertexShader;
+    
+    GLuint shaderProgram = compileShaders(vertexShader, fragmentShader);
     bindAttributes(shaderProgram);
+    
+    GLuint tex;
+    glGenTextures(GL_TEXTURE_2D, &tex);
+    
+    SDL_Surface *image = IMG_Load("pic.png");
+    
+    if (!image) {
+        assert(false);
+    }
+    
+    
+    int mode;
+    if (image->format->BytesPerPixel == 3) { // RGB 24bit
+        mode = GL_RGB;
+    } else if (image->format->BytesPerPixel == 4) { // RGBA 32bit
+        mode = GL_RGBA;
+    }
+    
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexImage2D(GL_TEXTURE_2D, 0, mode, image->w, image->h, 0, GL_RGB, GL_UNSIGNED_BYTE, image->pixels);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
     
     while (true) {
         if (SDL_PollEvent(&windowEvent)) {
@@ -119,13 +189,21 @@ int main(int argc, const char * argv[]) {
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
         
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         
         SDL_GL_SwapWindow(window);
     }
     
+    glDeleteProgram(shaderProgram);
+    glDeleteShader(fragmentShader);
+    glDeleteShader(vertexShader);
+    
+    glDeleteBuffers(1, &vbo);
+    glDeleteBuffers(1, &ebo);
+    glDeleteVertexArrays(1, &vao);
     
     SDL_GL_DeleteContext(context);
+    SDL_FreeSurface(image);
     
     SDL_Quit();
     return 0;
