@@ -22,20 +22,21 @@ void setupVertices(GLuint& vbo);
 
 void bindAttributes(GLuint& shaderProgram) {
     GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
-    glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 7 * sizeof(float), 0);
     glEnableVertexAttribArray(posAttrib);
+    glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 7 * sizeof(GLfloat), 0);
+    
     
     GLint colAttrib = glGetAttribLocation(shaderProgram, "color");
     glEnableVertexAttribArray(colAttrib);
-    glVertexAttribPointer(colAttrib, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void*)(2 * sizeof(float)));
+    glVertexAttribPointer(colAttrib, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(GLfloat), (void*)(2 * sizeof(GLfloat)));
     
     GLint texAttrib = glGetAttribLocation(shaderProgram, "texcoord");
     glEnableVertexAttribArray(texAttrib);
-    glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void*)(5 * sizeof(float)));
+    glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 7 * sizeof(GLfloat), (void*)(5 * sizeof(GLfloat)));
 }
 
 GLuint compileShaders(GLuint& vertexShader, GLuint& fragmentShader) {
-    const GLchar* vertex = "#version 150\n\
+    const GLchar* vertex = "#version 150 core\n\
     in vec2 position;\n\
     in vec3 color;\n\
     in vec2 texcoord;\n\
@@ -47,7 +48,7 @@ GLuint compileShaders(GLuint& vertexShader, GLuint& fragmentShader) {
         gl_Position = vec4(position, 0.0, 1.0);\n\
     }";
     
-    const GLchar* fragment = "#version 150\n\
+    const GLchar* fragment = "#version 150 core\n\
     in vec3 Color;\n\
     in vec2 Texcoord;\n\
     out vec4 outColor;\n\
@@ -129,9 +130,6 @@ int main(int argc, const char * argv[]) {
     
     SDL_Event windowEvent;
     
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    
     GLuint vao;
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
@@ -169,9 +167,8 @@ int main(int argc, const char * argv[]) {
         mode = GL_RGBA;
     }
     
-    glBindTexture(GL_TEXTURE_2D, tex);
-    glTexImage2D(GL_TEXTURE_2D, 0, mode, image->w, image->h, 0, GL_RGB, GL_UNSIGNED_BYTE, image->pixels);
-    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, mode, image->w, image->h, 0, mode, GL_UNSIGNED_BYTE, image->pixels);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
