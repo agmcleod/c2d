@@ -6,18 +6,22 @@
 //  Copyright (c) 2015 McLeod, Aaron. All rights reserved.
 //
 #ifdef __APPLE__
-    #include <OpenGL/OpenGL.h>
     #define GLEW_STATIC
     #include <GL/glew.h>
+    #include <OpenGL/OpenGL.h>
+    #include <SDL2/SDL.h>
+    #include <SDL2_image/SDL_image.h>
 #elif _WIN32
     #include <windows.h>
     #include <GL/glew.h>
+    #include <SDL2/SDL.h>
+    #include <SDL2/SDL_image.h>
 #elif _WIN64
     #include <windows.h>
     #include <GL/glew.h>
+    #include <SDL2/SDL.h>
+    #include <SDL2/SDL_image.h>
 #endif
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
 
 #ifdef main
 #undef main
