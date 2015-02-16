@@ -23,6 +23,10 @@
     #include <SDL2/SDL_image.h>
 #endif
 
+#include "glm/glm/glm.hpp"
+#include "glm/glm/gtc/matrix_transform.hpp"
+#include "glm/glm/gtc/type_ptr.hpp"
+
 #ifdef main
 #undef main
 #endif
@@ -59,10 +63,11 @@ GLuint compileShaders(GLuint& vertexShader, GLuint& fragmentShader) {
         in vec2 texcoord;\n\
         out vec3 Color;\n\
         out vec2 Texcoord;\n\
+        uniform mat4 trans;\n\
         void main() {\n\
             Color = color;\n\
             Texcoord = texcoord;\n\
-            gl_Position = vec4(position, 0.0, 1.0);\n\
+            gl_Position = trans * vec4(position, 0.0, 1.0);\n\
         }";
 
     const GLchar* fragment =
@@ -190,6 +195,9 @@ int main() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    
+    GLint uniTrans = glGetUniformLocation(shaderProgram, "trans");
+    glm::mat4 trans;
 
     while (true) {
         if (SDL_PollEvent(&windowEvent)) {
@@ -200,6 +208,11 @@ int main() {
                 break;
             }
         }
+        
+        trans = glm::rotate(trans, (float) clock() / (float) CLOCKS_PER_SEC * 180.0f, glm::vec3(0.0f, 0.0f, 1.0f));
+        
+        
+        glUniformMatrix4fv(uniTrans, 1, GL_FALSE, glm::value_ptr(trans));
 
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
