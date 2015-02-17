@@ -23,9 +23,9 @@
     #include <SDL2/SDL_image.h>
 #endif
 
-#include "glm/glm/glm.hpp"
-#include "glm/glm/gtc/matrix_transform.hpp"
-#include "glm/glm/gtc/type_ptr.hpp"
+#include "glm/glm.hpp"
+#include "glm/gtc/matrix_transform.hpp"
+#include "glm/gtc/type_ptr.hpp"
 
 #ifdef main
 #undef main
@@ -34,6 +34,9 @@
 #include <iostream>
 #include <assert.h>
 #include <vector>
+
+#define SCREEN_WIDTH 800
+#define SCREEN_HEIGHT 600
 
 void bindAttributes(GLuint& shaderProgram);
 GLuint compileShaders(GLuint& vertexShader, GLuint& fragmentShader);
@@ -63,11 +66,11 @@ GLuint compileShaders(GLuint& vertexShader, GLuint& fragmentShader) {
         in vec2 texcoord;\n\
         out vec3 Color;\n\
         out vec2 Texcoord;\n\
-        uniform mat4 trans;\n\
+        uniform mat4 uMatrix;\n\
         void main() {\n\
             Color = color;\n\
             Texcoord = texcoord;\n\
-            gl_Position = trans * vec4(position, 0.0, 1.0);\n\
+            gl_Position = uMatrix * vec4(position.xy, 0.0, 1.0);\n\
         }";
 
     const GLchar* fragment =
@@ -130,10 +133,10 @@ void setupElementBuffer(GLuint& ebo) {
 void setupVertices(GLuint& vbo) {
     GLfloat vertices[] = {
         //  Position   Color             Texcoords
-        -0.5f, 0.5f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, // Top-left
-        0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, // Top-right
-        0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, // Bottom-right
-        -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f  // Bottom-left
+        0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, // Top-left
+        200.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, // Top-right
+        200.0f, 200.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, // Bottom-right
+        0.0f, 200.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f  // Bottom-left
     };
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
@@ -145,7 +148,7 @@ int main() {
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
 
-    SDL_Window* window = SDL_CreateWindow("OpenGL", 100, 100, 800, 600, SDL_WINDOW_OPENGL);
+    SDL_Window* window = SDL_CreateWindow("OpenGL", 100, 100, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL);
     SDL_GLContext context = SDL_GL_CreateContext(window);
 
     glewExperimental = GL_TRUE;
@@ -163,6 +166,7 @@ int main() {
     GLuint ebo;
     glGenBuffers(1, &ebo);
 
+    glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
     setupVertices(vbo);
     setupElementBuffer(ebo);
 
@@ -196,8 +200,16 @@ int main() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     
-    GLint uniTrans = glGetUniformLocation(shaderProgram, "trans");
-    glm::mat4 trans;
+    GLint uniTrans = glGetUniformLocation(shaderProgram, "uMatrix");
+    float arr[] = {2 / SCREEN_WIDTH, 0, 0,
+     0, -2 / SCREEN_HEIGHT, 0,
+        -1, 1, 1};
+    glm::mat4 projection(1.0);
+    projection = glm::ortho(0.0f, (float) SCREEN_WIDTH, (float) SCREEN_HEIGHT, 0.0f);
+    
+    float vec[] = { 0.0f, 200.0f };
+    
+    glUniformMatrix4fv(uniTrans, 1, GL_FALSE, glm::value_ptr(projection));
 
     while (true) {
         if (SDL_PollEvent(&windowEvent)) {
@@ -209,11 +221,7 @@ int main() {
             }
         }
         
-        trans = glm::rotate(trans, (float) clock() / (float) CLOCKS_PER_SEC * 180.0f, glm::vec3(0.0f, 0.0f, 1.0f));
         
-        
-        glUniformMatrix4fv(uniTrans, 1, GL_FALSE, glm::value_ptr(trans));
-
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
