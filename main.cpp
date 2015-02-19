@@ -201,14 +201,8 @@ int main() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     
     GLint uniTrans = glGetUniformLocation(shaderProgram, "uMatrix");
-    float arr[] = {2 / SCREEN_WIDTH, 0, 0,
-     0, -2 / SCREEN_HEIGHT, 0,
-        -1, 1, 1};
     glm::mat4 projection(1.0);
     projection = glm::ortho(0.0f, (float) SCREEN_WIDTH, (float) SCREEN_HEIGHT, 0.0f);
-    
-    float vec[] = { 0.0f, 200.0f };
-    
     glUniformMatrix4fv(uniTrans, 1, GL_FALSE, glm::value_ptr(projection));
 
     while (true) {
